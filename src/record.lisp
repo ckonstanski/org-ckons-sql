@@ -136,8 +136,11 @@ on those slots."
 (defmethod insert-query ((record record))
   (let* ((field-value-alist (field-value-list-no-nulls record)))
     (format nil
-            "INSERT INTO ~a (~a) VALUES (~a)"
-            (org-ckons-core::format-list (if (slot-exists-p record '*write-table) (slot-value record '*write-table) (slot-value record '*table)) `(,(*project record)))
+            "INSERT INTO ~a (~a) VALUES (~a) RETURNING id"
+            (org-ckons-core::format-list (if (slot-exists-p record '*write-table)
+                                             (slot-value record '*write-table)
+                                             (slot-value record '*table))
+              `(,(*project record)))
             (org-ckons-core::reduce-to-comma-separated-string (mapcar (lambda (pair)
                                                                         (car pair))
                                                                       field-value-alist))
@@ -146,7 +149,7 @@ on those slots."
                                                                       field-value-alist)))))
 
 (defmethod currval-query ((record record))
-  (format nil "SELECT * from currval(pg_get_serial_sequence('~a', 'id'))" (*table record)))
+  (format nil "SELECT * FROM currval(pg_get_serial_sequence('~a', 'id'))" (*table record)))
 
 (defmethod update-query ((record record))
   (if (null (*where-expression record))
@@ -172,8 +175,7 @@ on those slots."
                                        `(,(*project record)))))
 
 (defmethod insert-record* ((record record))
-  (execute-command (insert-query record))
-  (setf (id record) (caar (execute-query (currval-query record)))))
+  (setf (id record) (execute-command (insert-query record))))
   
 (defmethod update-record* ((record record))
   (execute-command (update-query record)))
